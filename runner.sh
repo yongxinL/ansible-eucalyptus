@@ -117,10 +117,27 @@ function remove_docker_image() {
 #
 update_dockerfile() {
     local v_file=$1;
+    local v_mount="";
 
     if [ -f "${v_file}" ]; then
         echo_WARNING -n "--> Updating Dockerfile ... "
+
+        # ports exposed to host
         sed -i 's#_===EXPOSE_PORTS===_#'"${unit_exposed_ports}"'#g' "${v_file}"
+
+        # exposed volume
+        IFS=','
+        if [ ! -z "${unit_exposed_volume}" ]; then
+            for unit_volume in ${unit_exposed_volume}; do
+                # add volume with trimed leading and trailing whitespace
+                v_mount+="\"$(echo "${unit_volume}" | awk '{gsub(/^ +| +$/,"")} {print $0}' )\",";
+            done
+            # remove last comma from variable
+            v_mount=${v_mount::-1};
+
+            sed -i 's#_===EXPOSE_VOLUME===_#'"${v_mount}"'#g' "${v_file}"
+        fi
+
         echo_SUCCESS "Done!"
     fi
 }
@@ -187,6 +204,9 @@ fi
 
 # automatically remove the container when it exists
 docker_run_args+="--rm ";
+
+# runtime privilege
+docker_run_args+="--privileged ";
 
 # exposed ports
 if [ ! -z "${unit_exposed_ports}" ]; then

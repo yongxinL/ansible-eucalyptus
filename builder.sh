@@ -116,10 +116,33 @@ function remove_docker_image() {
 #
 update_dockerfile() {
     local v_file=$1;
+    local v_mount="";
 
     if [ -f "${v_file}" ]; then
         echo_WARNING -n "--> Updating Dockerfile ... "
-        sed -i 's#_===EXPOSE_PORTS===_#'"${unit_exposed_ports}"'#g' "${v_file}"
+
+        # ports exposed to host
+        if [ ! -z "${unit_exposed_ports}" ]; then
+            sed -i 's#_===EXPOSE_PORTS===_#'"${unit_exposed_ports}"'#g' "${v_file}"
+        else
+            sed -i 's/^EXPOSE.*//g' "${v_file}"
+        fi
+
+        # exposed volume
+        IFS=','
+        if [ ! -z "${unit_exposed_volume}" ]; then
+            for unit_volume in ${unit_exposed_volume}; do
+                # add volume with trimed leading and trailing whitespace
+                v_mount+="\"$(echo "${unit_volume}" | awk '{gsub(/^ +| +$/,"")} {print $0}' )\",";
+            done
+            # remove last comma from variable
+            v_mount=${v_mount::-1};
+
+            sed -i 's#_===EXPOSE_VOLUME===_#'"${v_mount}"'#g' "${v_file}"
+        else
+            sed -i 's/^VOLUME.*//g' "${v_file}"
+        fi
+
         echo_SUCCESS "Done!"
     fi
 }
@@ -133,8 +156,6 @@ show_image_info() {
     local v_image_id=$(get_docker_imageid ${v_unit_name});
     if [ ! -z ${v_image_id} ]; then
         docker images | grep -e "${v_image_id}"
-    else
-        echo_FAILURE "Something wrong here,  please check!"
     fi
 }
 
@@ -160,6 +181,7 @@ echo_WARNING "--> Building image ${unit_repo_name} ... "
 
 # remove existing image if necessary
 remove_docker_image ${unit_repo_name}
+remove_docker_image "<none>"
 
 update_dockerfile "${unit_working_root}/${unit_dockerfile}"
 
