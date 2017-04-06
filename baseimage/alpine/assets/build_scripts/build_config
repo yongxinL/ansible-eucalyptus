@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This is part of docker library project.
+#   This is script is use to install required packages in target debian/ubuntu
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Variables -----------------------------------------------------------------
+unit_run_root="/etc/docker_run.d";
+unit_envvar_root="/etc/docker_environments";
+unit_envjson="/etc/docker_environment.json";
+unit_envshell="/etc/docker_environment.sh";
+unit_services_root="/etc/docker_services";
