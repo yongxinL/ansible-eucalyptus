@@ -24,7 +24,7 @@ COPY assets/ /
 RUN set -ex; \
     chmod +x /build_scripts/*.sh; \
     sync; \
-    for sfile in `ls /build_scripts/*.sh | sort -V`; do \
+    for sfile in `ls /build_scripts/*.sh`; do \
         echo "executing script " $sfile; \
         $sfile; \
     done;
