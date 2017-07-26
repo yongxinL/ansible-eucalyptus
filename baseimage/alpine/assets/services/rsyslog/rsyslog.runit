@@ -1,0 +1,60 @@
+#!/bin/sh
+# please use sh as bash does not exist in base alpine image
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Shell Opts ----------------------------------------------------------------
+set -e
+
+## Vars ----------------------------------------------------------------------
+
+# enable debug
+debug_mode=${DEBUG:-on};
+
+# service related configuration
+service_id="002"
+service_owner="root"
+service_group="root"
+service_name="rsyslog"
+# direcotry where the service data files resides.
+service_data_root=/data/${service_name};
+# direcotry where the service configure files resides.
+service_config_root=${service_data_root}/config;
+
+## Functions -----------------------------------------------------------------
+info_block "checking for required libraries." 2> /dev/null ||
+    source "/etc/scripts_library.sh";
+
+## Main ----------------------------------------------------------------------
+log_debug "[${service_name}] create related directories and configuration files ... "
+datapath="config/rsyslog.d config/logrotate.d logs"
+for path in ${datapath}; do
+    [ ! -d ${service_data_root}/${path} ] && mkdir -p ${service_data_root}/${path};
+    chown -R ${service_owner}:${service_group} ${service_data_root}/${path};
+done
+
+log_debug "[${service_name}] copying default configuration files ..."
+if [ -d "/etc/${service_name}" ] && [ ! -f "${service_config_root}/rsyslog.d/${service_name}.stamp" ]; then
+    find /etc/${service_name}/*.conf -maxdepth 1 -type f ! \( -name "rsyslog.conf" -o -name "logrotate.conf" \)  -exec cp "{}" "${service_config_root}/rsyslog.d" ";"
+    chown -R ${service_owner}:${service_group} ${service_config_root}/*;
+    chmod -R 0644 ${service_config_root}/*;
+    touch ${service_config_root}/rsyslog.d/${service_name}.stamp;
+fi
+if [ -d "/etc/${service_name}" ] && [ ! -f "${service_config_root}/logrotate.d/logrotate.stamp" ]; then
+    find /etc/${service_name}/*.logrotate -maxdepth 1 -type f -exec cp "{}" "${service_config_root}/logrotate.d" ";"
+    chown -R ${service_owner}:${service_group} ${service_config_root}/*;
+    chmod -R 0644 ${service_config_root}/*;
+    touch ${service_config_root}/logrotate.d/logrotate.stamp;
+fi
+
+[ ! -d /var/spool/rsyslog ] && mkdir -p /var/spool/rsyslog
+
+log_debug "[${service_name}] starting service ..."
+exec /usr/sbin/rsyslogd -n -f /etc/rsyslog.conf

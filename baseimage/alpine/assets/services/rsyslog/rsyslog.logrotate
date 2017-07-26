@@ -1,0 +1,25 @@
+/data/rsyslog/logs/syslog
+{
+        rotate 7
+        daily
+        missingok
+        notifempty
+        delaycompress
+        compress
+        postrotate
+                sv restart /etc/services.d/002-rsyslog > /dev/null
+        endscript
+}
+/data/rsyslog/logs/messages
+{
+        rotate 4
+        weekly
+        missingok
+        notifempty
+        compress
+        delaycompress
+        sharedscripts
+        postrotate
+                sv restart /etc/services.d/002-rsyslog > /dev/null
+        endscript
+}
