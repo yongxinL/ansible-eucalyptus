@@ -213,7 +213,7 @@ if [ ${#_arg_positionals[@]} -lt 1 ]; then
 fi
 
 if [ ${#_arg_positionals[@]} -gt 1 ]; then
-    exit_fail "There weere spurious positional arguments - we only require the docker name or PATH for Docerfile."
+    exit_fail "There were spurious positional arguments - we only require the docker name or PATH for Docerfile."
 fi
 
 for (( _arg_ii = 0; _arg_ii < ${#_arg_positionals[@]}; _arg_ii++ )); do
