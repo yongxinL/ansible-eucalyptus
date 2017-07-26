@@ -1,0 +1,141 @@
+#!/bin/sh
+# please use sh as bash does not exist in base alpine image
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Shell Opts ----------------------------------------------------------------
+set -e
+
+## Vars ----------------------------------------------------------------------
+
+# enable debug
+debug_mode=${DEBUG:-on};
+
+# service related configuration
+service_owner="plex"
+service_group="plex"
+service_name="plex"
+
+export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-"noninteractive"}
+export PLEX_MEDIA_SERVER_USER=plex;
+export PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS=${PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS:-6};
+export PLEX_MEDIA_SERVER_MAX_STACK_SIZE=${PLEX_MEDIA_SERVER_MAX_STACK_SIZE:-3000};
+export PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR=${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR:-/data/plex};
+export PLEX_MEDIA_SERVER_HOME=/usr/share/plexmediaserver;
+export PLEX_MEDIA_SERVER_TMPDIR=${PLEX_MEDIA_SERVER_TMPDIR:-/tmp};
+export TMPDIR="${PLEX_MEDIA_SERVER_TMPDIR}";
+export PLEX_MEDIA_SERVER_USE_SYSLOG=true
+PLEX_LOGIN=${PLEX_LOGIN};
+PLEX_PASSWORD=${PLEX_PASSWORD};
+
+plex_preferences="${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}/Plex Media Server/Preferences.xml"
+
+## Functions -----------------------------------------------------------------
+info_block "checking for required libraries." 2> /dev/null ||
+    source "/etc/scripts_library.sh";
+#
+# update plex preferences attribute
+#
+function update_preference_attribute () {
+    v_attr="$1";
+    v_value="$2";
+    if [ $(xmlstarlet select -T -t -m "/Preferences" -v "@$v_attr" -n "$plex_preferences") ]; then
+        xmlstarlet edit --inplace --update "/Preferences/@$v_attr" -v "$v_value" "$plex_preferences"
+    else
+        xmlstarlet edit --inplace --insert "Preferences" --type attr -n "$v_attr" -v "$v_value" "$plex_preferences"
+    fi
+}
+#
+# retrieve plex token from plex.tv
+#
+function retrieve_plex_token () {
+
+    local _login="$1";
+    local _password="$2"
+
+    # remove double quote in the variable
+    _login=${_login%\"}
+    _login=${_login#\"}
+    _password=${_password%\"}
+    _password=${_password#\"}
+
+    while [ -z "${_login}" ]; do
+         >&2 echo -n 'Your Plex login (e-mail or username): '
+         read _login;
+    done
+    while [ -z "${_password}" ]; do
+         >&2 echo -n 'Your Plex plex_password: '
+         read _password;
+    done
+
+    >&2 echo "Retrieving a plex token using plex Login: ${_login} ..."
+
+    curl -qu "${_login}":"${_password}" 'https://plex.tv/users/sign_in.xml' \
+        -X POST -H 'X-Plex-Device-Name: PlexMediaServer' \
+        -H 'X-Plex-Provides: server' \
+        -H 'X-Plex-Version: 0.9' \
+        -H 'X-Plex-Platform-Version: 0.9' \
+        -H 'X-Plex-Platform: xcid' \
+        -H 'X-Plex-Product: Plex Media Server'\
+        -H 'X-Plex-Device: Linux'\
+        -H 'X-Plex-Client-Identifier: XXXX' --compressed > ${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}/plex_sign_in
+
+    _plex_token=$(sed -n 's/.*<authentication-token>\(.*\)<\/authentication-token>.*/\1/p' ${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}/plex_sign_in);
+
+    if [ -z "${_plex_token}" ]; then
+        echo $(sed -n 's/.*<error>\(.*\)<\/error>.*/\1/p' ${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}/plex_sign_in);
+    else
+        echo "${_plex_token}";
+    fi
+    # rm -f ${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}/plex_sign_in;
+}
+
+## Main ----------------------------------------------------------------------
+log_info "[plex] create related directories and configuration files ... "
+if [ ! -d "${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}" ]; then
+    mkdir -p "${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}";
+    if [ ! $? -eq 0 ]; then
+        exit_fail "WARNING COULDN'T CREATE $PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR, MAKE SURE I HAVE PERMISSON TO DO THAT!"
+    fi
+fi
+log_debug "[plex] create user preferences file ..."
+if [ ! -f "${plex_preferences}" ]; then
+    mkdir -p "${plex_preferences%/*}"
+    cp /etc/${service_name}/Preferences.xml "${plex_preferences}";
+fi
+log_debug "[plex] set permission for support directories ..."
+chown -R plex:plex "${PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR}";
+
+log_info "[plex] checking Plex online Token ..."
+_token=$(xmlstarlet select -T -t -m "/Preferences" -v "@PlexOnlineToken" -n "${plex_preferences}")
+
+if [ ! ${_token} ] && [ ${#_token} -ne 20 ]; then
+    log_debug "create PlexOnlineToken with userid and password online ..."
+    _token=$(retrieve_plex_token ${PLEX_LOGIN} ${PLEX_PASSWORD});
+
+    if [ ${#_token} -ne 20 ]; then
+        # exit_fail "${_token}";
+        # for debug only
+        _token="jfCiQiadx1kxf5F2s7r3";
+        log_debug "remove PlexOnlineToken to prevent duplication ..."
+        xmlstarlet edit --delete "/Preferences/@PlexOnlineToken" "${plex_preferences}";
+        update_preference_attribute PlexOnlineToken "${_token}";
+    else
+        log_debug "remove PlexOnlineToken to prevent duplication ..."
+        xmlstarlet edit --delete "/Preferences/@PlexOnlineToken" "${plex_preferences}";
+        update_preference_attribute PlexOnlineToken "${_token}";
+    fi
+fi
+
+log_debug "[${service_name}] starting service ..."
+exec chpst -u ${service_owner} /bin/bash -c "
+    export LD_LIBRARY_PATH=${PLEX_MEDIA_SERVER_HOME}:${GLIBC_HOME}
+    exec \"${PLEX_MEDIA_SERVER_HOME}/Plex Media Server\"
+"
