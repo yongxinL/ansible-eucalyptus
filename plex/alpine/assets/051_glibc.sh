@@ -28,7 +28,8 @@ service_version=
 service_source_root="${_self_root}/services/${service_name}"
 service_home_root="/lib/${service_name}"
 package_download_list="libc6 libgcc1 libstdc++6"
-package_download_url="http://ftp.debian.org/debian/pool/main/g"
+#package_download_url="http://ftp.debian.org/debian/pool/main/g"
+package_download_url="https://github.com/yongxinL/docker-library/raw/alpine/plex/alpine/assets/packages"
 
 ## Functions -----------------------------------------------------------------
 info_block "checking for required libraries." 2> /dev/null ||
@@ -44,7 +45,7 @@ ${package_install_command} \
         xz
 
 log_debug "[${service_name}] downloading ${service_name} package from debian repository ..."
-curl -L "${package_download_url}/glibc/libc6_2.24-11_amd64.deb" -o /tmp/libc6_amd64.deb;
+curl -L "${package_download_url}/glibc/libc6_2.24-12_amd64.deb" -o /tmp/libc6_amd64.deb;
 curl -L "${package_download_url}/gcc-4.9/libgcc1_4.9.2-10_amd64.deb" -o /tmp/libgcc1.deb;
 curl -L "${package_download_url}/gcc-4.9/libstdc++6_4.9.2-10_amd64.deb" -o /tmp/libstdc++6.deb;
 
