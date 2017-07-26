@@ -1,0 +1,80 @@
+#!/bin/bash
+# please use sh as bash does not exist in base alpine image
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Shell Opts ----------------------------------------------------------------
+set -e
+
+## Vars ----------------------------------------------------------------------
+
+# enable debug
+debug_mode=${DEBUG:-on};
+
+# service related configuration
+service_owner="elk"
+service_group="elk"
+service_name="elasticsearch"
+
+# directory where the service binary distribution resides.
+service_home_root="/usr/share/${service_name}";
+# direcotry where the service data files resides.
+service_data_root=/data/${service_name};
+# memory configuration
+ES_JAVA_OPTS=${ES_JAVA_OPTS:-"-Xms128m -Xmx256m"}
+
+## Functions -----------------------------------------------------------------
+info_block "checking for required libraries." 2> /dev/null ||
+    source "/etc/scripts_library.sh";
+
+## Main ----------------------------------------------------------------------
+log_debug "[${service_name}] create related directories and configuration files ... "
+datapath="config config/scripts config/ingest-geoip data logs plugins work"
+for path in ${datapath}; do
+    [ ! -d ${service_data_root}/${path} ] && mkdir -p ${service_data_root}/${path};
+    chown -R ${service_owner}:${service_group} ${service_data_root}/${path};
+done
+
+log_debug "[${service_name}] copying default configuration files ..."
+if [ -d "/etc/elastic/${service_name}" ] && [ ! -f "${service_data_root}/config/.${service_name}" ]; then
+    find /etc/elastic/${service_name}/. -maxdepth 1 -type f -exec cp "{}" "${service_data_root}/config" ";"
+    find /etc/elastic/${service_name}/ingest-geoip/. -maxdepth 1 -type f -exec cp "{}" "${service_data_root}/config/ingest-geoip" ";"
+    chown -R root:${service_group} ${service_data_root}/config;
+    chmod -R 0755 ${service_data_root}/config;
+    touch ${service_data_root}/config/.${service_name};
+fi
+
+log_debug "[${service_name}] link configuration directory to ${service_name} home ..."
+[ -d "${service_home_root}/config" ] && rm -rf "${service_home_root}/config"
+ln -s "${service_data_root}/config" "${service_home_root}"
+
+log_debug "[${service_name}] update new memory configuration with environment ..."
+for opt in ${ES_JAVA_OPTS}; do
+    opt="${opt%\"}"
+    opt="${opt#\"}"
+    log_debug "option will update: ${opt}"
+    sed -i "s/^${opt:0:4}.*/${opt}/g" "${service_data_root}/config/jvm.options"
+done
+
+log_debug "[${service_name}] grant full permission on /tmp ..."
+[ -d /tmp ] && chmod 777 /tmp;
+
+log_debug "[${service_name}] update system environment before drop privileges ..."
+# set ulimit as (root, presumably) first, before we drop privileges
+ulimit -n 65536
+
+# set max_map_count first, before we drop privileges
+#sysctl -w vm.max_map_count=262144
+
+log_debug "[${service_name}] starting service ..."
+exec chpst -u ${service_owner} /bin/bash -c "
+    ES_JAVA_OPTS=${ES_JAVA_OPTS}
+    exec \"${service_home_root}/bin/${service_name}\"
+"
