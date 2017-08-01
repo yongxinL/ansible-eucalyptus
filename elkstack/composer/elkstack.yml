@@ -1,0 +1,44 @@
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+version: '2'
+
+services:
+
+  elasticsearch:
+    build: elasticsearch/5.x/alpine/
+    volumes:
+      - /yongxin/private/var/data:/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+    hostname: elksearch
+    networks:
+      - elkstack
+
+  kibana:
+    build: kibana/5.x/alpine/
+    volumes:
+      - /yongxin/private/var/data:/data
+    ports:
+      - "5601:5601"
+    hostname: elkkibana
+    networks:
+      - elkstack
+    depends_on:
+      - elasticsearch
+    links:
+      - elasticsearch
+
+networks:
+
+  elkstack:
+    driver: bridge
