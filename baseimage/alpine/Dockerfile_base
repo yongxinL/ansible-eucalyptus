@@ -14,20 +14,21 @@ MAINTAINER George Li <yongxinl@outlook.com>
 # upload scripts to container unit
 COPY assets/ /scripts
 
-# execute scripts to build
 RUN set -e; \
-    chmod +x /scripts/*.sh; \
-    sync; \
-    for sfile in $(ls /scripts/[0-9]*.sh); do \
-        echo "executing script $sfile ..."; \
-        $sfile; \
-    done;
-
-# ports exposed to host
-EXPOSE _===EXPOSE_PORTS===_
-
-# mount point from native host or other containers
-VOLUME [_===EXPOSE_VOLUME===_]
+    apk add --no-cache bash curl nano tar zip unzip \ 
+        git gcc make musl-dev; \
+    unzip -o /scripts/dumb-init.zip -d /tmp; \
+    cd /tmp/dumb-init; \
+    make; \
+    cp /tmp/dumb-init/dumb-init /sbin/; \
+    mkdir -p /etc/startup; \
+    unzip -o /scripts/runit.zip -d /tmp; \
+    cd /tmp/runit; \
+    make; \
+    cp chpst runit runit-init runsv runsvchdir runsvdir sv svlogd utmpset /sbin; \
+    mkdir -p /etc/service; \
+    rm -rf /tmp/*; \
+    apk del --no-cache git gcc make musl-dev zip unzip;
 
 # define default command
 CMD ["/sbin/dumb-init", "/sbin/runsvdir", "-P", "/etc/service"]

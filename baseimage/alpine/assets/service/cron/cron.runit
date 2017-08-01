@@ -1,0 +1,45 @@
+#!/bin/bash
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Shell Opts ----------------------------------------------------------------
+set -e
+
+## Vars ----------------------------------------------------------------------
+# - commonly used variables
+script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
+log_level="verbose"
+log_file="/var/log/syslog"
+
+## Functions -----------------------------------------------------------------
+infobox "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.dash";
+
+# - service variables
+service_data_path="/etc/periodic/15min /etc/periodic/daily /etc/periodic/hourly /etc/periodic/monthly /etc/periodic/weekly /var/spool/cron"
+
+infobox "*** Creating required directories ..."
+for path in ${service_data_path};
+do
+	[ ! -d /etc/periodic/${path} ] && mkdir -p /etc/periodic/${path};
+done
+chown -R root:root /etc/periodic
+[ -d /var/spool/cron/crontabs ] && rm -rf /var/spool/cron/crontabs
+ln -s /etc/crontabs /var/spool/cron/
+
+# options can be use to start the crond
+# -f      foreground
+# -b      background (default)
+# -S      Log to syslog (default)
+# -l N    Set log level, most verbose: 0, default: 8
+# -d N    Set log level, log to stderr
+# -c      Cron dir. Default: /var/spool/cron/crontabs
+exec_command "*** Starting rsyslog service ..." \
+    chpst -v /usr/sbin/crond -f -S -c /var/spool/cron/crontabs

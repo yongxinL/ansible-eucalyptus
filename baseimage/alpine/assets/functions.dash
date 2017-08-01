@@ -1,0 +1,332 @@
+#!/bin/bash
+# =============================================================================
+# - bash function Library
+# 
+# - Copyright (C) 2017 George Li <yongxinl@outlook.com>
+#
+# - Author: George Li (yongxinL@outlook.com)
+# - http://github.com/yongxinL/docker
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Pre-flight check ----------------------------------------------------------
+# determine the distribution we are running on, so we can
+# configure it appropriately
+function determine_distro() {
+	source /etc/os-release 2>/dev/null
+	__lib_distro_id="${ID}"
+	__lib_distro_name="${NAME}"
+	__lib_distro_version_id="${VERSION_ID}"
+
+	case ${__lib_distro_id} in
+		centos|rhel|fedora)
+			package_cmd_delete="yum install "
+			package_cmd_install="yum remove "
+			package_cmd_query="rpm -qa "
+			;;
+		ubuntu|debian)
+			package_cmd_delete="apt-get remove "
+			package_cmd_install="apt-get install "
+			package_cmd_query="dpkg -l "
+			package_cmd_update="apt-get update "
+			package_cmd_upgrade="apt-get upgrade "
+			;;
+		alpine)
+			package_cmd_delete="apk del --no-cache "
+			package_cmd_install="apk add --no-cache "
+			package_cmd_query="apk info "
+			package_repository="http://dl-4.alpinelinux.org/alpine/edge/community"
+			package_repository_file="/etc/apk/repositories"
+			package_cmd_update="apk update "
+			package_cmd_upgrade="apk upgrade "
+			;;
+	esac
+}
+
+# reload script with bash shell
+if [ ! -n "${BASH_VERSION}" ]; then
+	script=$(readlink -f "$0")
+	if [ ! -f "/bin/bash" ]; then
+		determine_distro
+		printf "\e[1;32m%s %s%s\e[0m\n" "$(date -u +"%Y-%m-%d %T")" "[INFO]" "*** Installing base shell packages ..."
+		${package_cmd_install} bash >> /dev/null
+	fi
+	printf "\e[1;32m%s %s%s\e[0m\n" "$(date -u +"%Y-%m-%d %T")" "[INFO]" "*** Reloading script with bash shell ..."
+	/bin/bash $script
+	exit;
+fi
+
+# make sure only root can run our script
+if [ "$(id -u)" != "0" ]; then
+    infobox "This script must be run as root";
+    exit 1;
+fi
+
+## Functions -----------------------------------------------------------------
+# this function will load all the variables defined here.
+# they might be overridden by the scripts.
+function global_variables() {
+
+	# declare version
+	lib_version="0.1.1"
+
+	# determine the distribution
+	determine_distro
+
+	# declare script path and name
+	script_path="${script_path:-$(dirname $0)}"
+	script_name="${script_name:-$(basename $0)}"
+
+	# declare Logs, simple or verbose
+	log_level="${log_level:-simple}"
+	log_file="${log_file:-/tmp/${script_name%%.*}.log}"
+	
+	# start time in order to calculate total running time.
+	__libs_start_time="${start_time:-$(date +%s)}"
+
+	# Export known paths
+	export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
+
+	# Export Language and perform unattended installation of a Debian package
+	export LANG=C.UTF-8
+	export LC_ALL=C
+	export DEBIAN_FRONTEND=${DEBIAN_FRONTEND:-"noninteractive"}
+
+	# declare commonly colors
+	__lib_color_red="\e[1;31m"
+	__lib_color_green="\e[1;32m"
+	__lib_color_yellow="\e[1;33m"
+	__lib_color_blue="\e[1;34m"
+	__lib_color_magenta="\e[1;35m"
+	__lib_color_cyan="\e[1;36m"
+	__lib_color_standard="\e[0m"
+
+	# declare message colors
+	__lib_color_failure="${__lib_color_red}"
+	__lib_color_info="${__lib_color_blue}"
+	__lib_color_normal="${__lib_color_standard}"
+	__lib_color_success="${__lib_color_green}"
+	__lib_color_warning="${__lib_color_yellow}"
+	__lib_max_column_line="${COLUMNS:-120}"
+	__lib_move_column_end="echo -en \\033[$(( ${__lib_max_column_line} - 9 ))G"
+
+	# declare date, use date -u to get UTC timestamp
+	__lib_format_date_full="%a, %d %b %Y %H:%M:%S %Z"
+	__lib_format_date_short="%Y-%m-%d %T"
+	__lib_format_timestamp="%Y-%m-%dT%T.%3N%Z"
+}
+
+# update repository and upgrade Linux distribution
+function update_repository() {
+	# update repository file
+	if [ ! -z "${package_repository}" ] && [ ! -z "${package_repository_file}" ]; then
+		echo "${package_repository}" >> "${package_repository_file}"
+	fi
+	exec_command "*** Updating Linux repository ..."  ${package_cmd_update}
+	exec_command "*** Upgrading Linux Distribution ..." ${package_cmd_upgrade}
+	return 0
+}
+
+# execute some commands, and log its output
+# exec_command "message" command; command;
+# todo: find command is not work when there is ";" at the end of command
+function exec_command() {
+	local message
+
+	message=$1
+	if [ "$message" != "NA" ] && [ "$message" != "none" ]; then
+		infobox "$message"
+	fi
+	shift
+
+	local prompt_command_array
+	IFS=';' read -ra prompt_command_array <<< "$@"
+
+	# reset IFS
+	unset IFS
+
+	local command trimmed_command
+	for command in "${prompt_command_array[@]}";
+	do
+		trimmed_command="${command//&&/}"	# remove character &&
+		trimmed_command=$(trim "${trimmed_command}")	# remove space
+
+		# only execute the command if it actually exists
+		if type -t $(__lib_invoke_command "${command}") 1>/dev/null; then
+			${command} 2>&1 | write_log && success $"$message" || failure $"$message"
+			res=$?
+		fi
+	done
+	echo
+	return $res
+}
+
+# display a information message
+function infobox() {
+	printf "${__lib_color_info}%s %s%s${__lib_color_normal}"   "$(date -u +"${__lib_format_date_short}")" "[INFO]" "${1}"
+}
+
+# return the lowercase string
+function lowercase() {
+	args_or_stdin "$@" | tr 'A-Z' 'a-z';
+}
+
+# return the uppercase string
+function uppercase() {
+	args_or_stdin "$@" | tr 'a-z' 'A-Z';
+}
+
+# trim left-side blanks from string
+function ltrim() {
+	args_or_stdin "$@" | sed -Ee 's/^[[:space:]]*//';
+	# or use variable
+	#var="${var#"${var%%[![:space:]]*}"}"   # remove leading whitespace characters
+}
+
+# trim right-side blanks from string
+function rtrim() {
+	args_or_stdin "$@" | sed -Ee 's/[[:space:]]*$//';
+	# or use variable
+	#var="${var%"${var##*[![:space:]]}"}"   # remove trailing whitespace characters
+}
+
+# trim blanks surrounding string
+function trim() {
+	args_or_stdin "$@" | sed -Ee 's/^[[:space:]]*//' -e 's/[[:space:]]*$//';
+}
+
+# squeeze multiple blanks in string
+function squeeze() {
+	args_or_stdin "$@" | tr '\t' ' ' | tr -s ' '
+}
+
+# split string into parts using a separator (defaulting to space/tab)
+# and return the first (front) string
+function split_str_first() {
+	local sep="${2:-$' \t'}"
+	echo -n "${1%%${sep}*}"
+}
+
+# split string into parts using a separator (defaulting to space/tab)
+# and return the last string
+function split_str_last() {
+	local sep="${2:-$' \t'}"
+	echo -n ${1##*${sep}}
+}
+
+# return the given arguments, or read & return stdin until EOF
+function args_or_stdin() {
+	__lib_args_or_stdin "$@"
+}
+function __lib_args_or_stdin() {
+	if [[ $# -gt 0 ]]; then
+		echo "$*"
+	else
+		cat
+	fi
+}
+
+# return invoke command name, normally the first word in the command
+function __lib_invoke_command() {
+	local var=$@
+	var=${var%% *}
+	var=$(trim ${var})
+	echo -n "$var"
+}
+
+# function to write log to the screen or file
+function write_log() {
+	if [ "${log_level}" != "verbose" ]; then
+		# output process to the console
+		while IFS= read -r line;
+		do
+			printf "%s-%s:%s\n" "$(date -u +"${__lib_format_timestamp}")" "${script_name%%.*} [INFO]" "${line}" >> ${log_file}
+		done
+	else
+		# output process to the Log file
+		while IFS= read -r line;
+		do
+			printf "%s-%s:%s\n" "$(date -u +"${__lib_format_timestamp}")" "${script_name%%.*} [INFO]" "${line}"
+		done
+	fi
+}
+
+# log that something successed
+function success() {
+	local res=$?
+	[ "${log_level}" != "verbose" ] && __lib_echo_message success
+	return $res
+}
+# log that something failed
+function failure() {
+	local res=$?
+	[ "${log_level}" != "verbose" ] && __lib_echo_message failed
+	return $res
+}
+# log that something passed, but may had errors
+function passed() {
+	local res=$?
+	[ "${log_level}" != "verbose" ] && __lib_echo_message passed
+	return $res
+}
+# log that something warning
+function warning() {
+	local res=$?
+	[ "${log_level}" != "verbose" ] && __lib_echo_message warning
+	return $res
+}
+
+# display status message at the end of line
+function __lib_echo_message() {
+	local status color res
+
+	case $(trim $1) in
+		FAILURE | failure | FAILED | failed | ERROR | error )
+			status="FAILURE"
+			color="${__lib_color_failure}"
+			res=1
+			;;
+		INFO | info | NOTICE | notice )
+			status="NOTICED"
+			color="${__lib_color_info}"
+			res=0
+			;;
+		PASSED | passed | PASS | pass )
+			status="PASSED"
+			color="${__lib_color_success}"
+			res=0
+			;;
+		SUCCESS | success | SUCC | succ )
+			status="SUCCESS"
+			color="${__lib_color_success}"
+			res=0
+			;;
+		WARNING | warning | WARN | warn )
+			status="NOTICED"
+			color="${__lib_color_warning}"
+			res=1
+			;;
+		* )
+			status="INFO"
+			color="${__lib_color_info}"
+			res=0
+			;;
+	esac
+
+	# move cursor
+	$__lib_move_column_end
+	echo -n "["
+	echo -en "${color}"
+	echo -n "${status}"
+	echo -en "${__lib_color_normal}"
+	echo -n "]"
+	echo -ne "\r"
+	return $res
+}
+
+## Main ----------------------------------------------------------------------
+# initialize global variables
+global_variables
