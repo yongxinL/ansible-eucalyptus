@@ -1,0 +1,57 @@
+#!/bin/bash
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Shell Opts ----------------------------------------------------------------
+set -e
+
+## Vars ----------------------------------------------------------------------
+# - commonly used variables
+script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
+log_level="verbose"
+log_file="/var/log/syslog"
+
+# - service variables
+service_owner="elk"
+service_group="elk"
+service_name="elasticsearch"
+service_data_path="config config/scripts config/ingest-geoip data logs plugins work"
+
+ES_JAVA_OPTS=${ES_JAVA_OPTS:-"-Xms128m -Xmx256m"}
+
+## Main ----------------------------------------------------------------------
+infobox "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.dash";
+
+infobox "*** Creating required directories ..."
+for path in ${service_data_path};
+do
+    [ ! -d /data/${service_name}/${path} ] && mkdir -p /data/${service_name}/${path};
+    chown -R ${service_owner}:${service_group} /data/${service_name}/${path};
+done
+
+if [ ! -f "/data/${service_name}/.configured" ]; then
+    exec_command "*** Configuring ${service_name} ..." \
+        cp -R /etc/elastic/${service_name}/* /data/${service_name}/config; \
+        chown -R root:${service_group} /data/${service_name}/config; \
+        chmod -R 0755 /data/${service_name}/config; \
+        touch /data/${service_name}/.configured;
+fi
+
+infobox "*** Relink Elasticsearch configure directory ..." && success
+[ -d "/usr/share/${service_name}/config" ] && rm -rf "/usr/share/${service_name}/config"
+ln -s "/data/${service_name}/config" "/usr/share/${service_name}"
+
+exec_command "*** Update system environment before drop privileges ..." \
+    ulimit -n 65536; \
+    echo "${ES_JAVA_OPTS}" > /etc/envdir/ES_JAVA_OPTS;
+
+exec_command "*** Starting ${service_name} service ..." \
+    chpst -e /etc/envdir -u ${service_owner} -v /usr/share/${service_name}/bin/${service_name}
