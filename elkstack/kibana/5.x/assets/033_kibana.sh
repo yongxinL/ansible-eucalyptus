@@ -23,11 +23,12 @@ service_name="kibana"
 service_version="5.5.1"
 package_download_url="https://artifacts.elastic.co/downloads/kibana/kibana-${service_version}-linux-x86_64.tar.gz"
 
-## Main ----------------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
-infobox "*** Creating reqired user and group ..."
+## Main ----------------------------------------------------------------------
+print_log "*** Creating reqired user and group ..."
 [ $(grep -c "^${service_group}:" /etc/group) -eq 0 ] && addgroup -g "8031" "${service_group}" && success || failure
 [ $(grep -c "^${service_owner}:" /etc/passwd) -eq 0 ] && adduser -SH -u "8031" -G "${service_group}" -s /usr/sbin/nologin "${service_owner}" && success || failure
 
@@ -51,9 +52,9 @@ exec_command "*** Configuring ${service_name} ..." \
 	chmod +x "/etc/service/${service_name}/run"; \
 	mkdir -p /etc/elastic/${service_name};
 
-infobox "*** Copying configure files ..."; \
+print_log "*** Copying configure files ...";
 find ${script_path}/service/${service_name}/. -maxdepth 1 -type f ! -name *.runit -exec cp "{}" "/etc/elastic/${service_name}" ";" && success || failure
 
 # Elastic X-Pack - collect data from each node in your cluster
-exec_command "*** Installing ${service_name} X-Pack plugins ..." \
-	/usr/share/${service_name}/bin/${service_name}-plugin install --quiet x-pack;
+#exec_command "*** Installing ${service_name} X-Pack plugins ..." \
+#	/usr/share/${service_name}/bin/${service_name}-plugin install --quiet x-pack &> /dev/null;

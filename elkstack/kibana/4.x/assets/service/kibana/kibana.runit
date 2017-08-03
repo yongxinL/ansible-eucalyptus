@@ -24,14 +24,17 @@ service_group="elk"
 service_name="kibana"
 service_data_path="config data"
 
-## Main ----------------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
-infobox "*** Creating required directories ..."
+## Main ----------------------------------------------------------------------
 for path in ${service_data_path};
 do
-    [ ! -d /data/${service_name}/${path} ] && mkdir -p /data/${service_name}/${path};
+    if [ ! -d /data/${service_name}/${path} ]; then
+        exec_command "*** Creating required directory /data/${service_name}/${path} ..." \
+            mkdir -p /data/${service_name}/${path};
+    fi
     chown -R ${service_owner}:${service_group} /data/${service_name}/${path};
 done
 
@@ -43,9 +46,9 @@ if [ ! -f "/data/${service_name}/.configured" ]; then
         touch /data/${service_name}/.configured;
 fi
 
-infobox "*** Relink Elasticsearch configure directory ..." && success
-[ -d "/usr/share/${service_name}/config" ] && rm -rf "/usr/share/${service_name}/config"
-ln -s "/data/${service_name}/config" "/usr/share/${service_name}"
+exec_command "*** Relink ${service_name} configure directory ..." \
+	rm -rf "/usr/share/${service_name}/config"; \
+	ln -s "/data/${service_name}/config" "/usr/share/${service_name}";
 
 exec_command "*** Starting ${service_name} service ..." \
     chpst -e /etc/envdir -u ${service_owner} -v /usr/share/${service_name}/bin/${service_name}
