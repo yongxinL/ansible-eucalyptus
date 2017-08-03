@@ -1,0 +1,98 @@
+#!/bin/bash
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+
+## Shell Opts ----------------------------------------------------------------
+set -e
+
+## Vars ----------------------------------------------------------------------
+# - commonly used variables
+script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
+log_level="verbose"
+log_file="/var/log/syslog"
+
+# - service variables
+service_owner="plex"
+service_name="plex"
+service_data_path="/data/plex"
+service_config_file="${service_data_path}/Plex Media Server/Preferences.xml"
+
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+	source "/etc/functions.dash";
+
+# write the system variables to files before drop privileges
+function update_envdir() {
+
+	local glibc plex_auth_token
+	# read glibc from envdir
+	if [ ! -z $(cat /etc/envdir/GLIBC_HOME ) ]; then
+		glibc=$(cat /etc/envdir/GLIBC_HOME)
+	else
+		glibc="/lib/glibc"
+	fi
+
+	# retrieve plex token from plex.tv
+	if [ ! -z "${PLEX_LOGIN}" ] && [ ! -z "${PLEX_PASSWORD}" ]; then
+		curl -qu "$(sed -e 's/^"//' -e 's/"$//' <<< ${PLEX_LOGIN})":"$(sed -e 's/^"//' -e 's/"$//' <<< {PLEX_PASSWORD})" 'https://plex.tv/users/sign_in.xml' \
+			-X POST -H 'X-Plex-Device-Name: PlexMediaServer' \
+			-H 'X-Plex-Provides: server' \
+			-H 'X-Plex-Version: 0.9' \
+			-H 'X-Plex-Platform-Version: 0.9' \
+			-H 'X-Plex-Platform: xcid' \
+			-H 'X-Plex-Product: Plex Media Server'\
+			-H 'X-Plex-Device: Linux'\
+			-H 'X-Plex-Client-Identifier: XXXX' --compressed > "/tmp/plex_auth.txt"
+
+		plex_auth_token=$(sed -n 's/.*<authentication-token>\(.*\)<\/authentication-token>.*/\1/p' /tmp/plex_auth.txt)
+	fi
+
+	exec_command "*** Write system variables to files before drop privileges ..." \
+		echo "${service_owner}" > /etc/envdir/PLEX_MEDIA_SERVER_USER; \
+		echo "6" > /etc/envdir/PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS; \
+		echo "3000" > /etc/envdir/PLEX_MEDIA_SERVER_MAX_STACK_SIZE; \
+		echo "${service_data_path}" > /etc/envdir/PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR; \
+		echo "/usr/share/plexmediaserver" > /etc/envdir/PLEX_MEDIA_SERVER_HOME; \
+		echo "/tmp" > /etc/envdir/PLEX_MEDIA_SERVER_TMPDIR; \
+		echo "/tmp" > /etc/envdir/TMPDIR; \
+		echo "true" > /etc/envdir/PLEX_MEDIA_SERVER_USE_SYSLOG; \
+		echo "/usr/share/plexmediaserver:${glibc}" > /etc/envdir/LD_LIBRARY_PATH; \
+		echo "${plex_auth_token}" > /etc/envdir/PLEX_AUTH_TOKEN;
+
+	if [ ! -z "${plex_auth_token}" ]; then
+		update_plex_preference PlexOnlineToken "${plex_auth_token}"
+	fi
+}
+
+# update xml attribute
+function update_plex_preference() {
+	local xml_attr="$1"
+	local xml_value="$2"
+	if [ $(xmlstarlet select -T -t -m "/Preferences" -v "@${xml_attr}" -n "${service_config_file}") ]; then
+		xmlstarlet edit --inplace --update "/Preferences/@${xml_attr}" -v "${xml_value}" "${service_config_file}"
+	else
+		xmlstarlet edit --inplace --insert "Preferences" --type attr -n "${xml_attr}" -v "${xml_value}" "${service_config_file}"
+	fi
+}
+
+## Main ----------------------------------------------------------------------
+if [ ! -f "${service_config_file%/*}/.configured" ]; then
+	print_log "*** Creating required directory and configure files ..."
+	mkdir -p "${service_config_file%/*}"
+	cp -R /etc/${service_name}/* "${service_config_file%/*}"
+	chown -R ${service_name}:plex ${service_data_path}
+	touch "${service_config_file%/*}/.configured" && success
+fi
+
+# write the required environments into files
+update_envdir
+
+print_log "*** Starting ${service_name} service ..."
+chpst -e /etc/envdir -u ${service_owner} -v "/usr/share/plexmediaserver/Plex Media Server" \

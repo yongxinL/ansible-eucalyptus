@@ -1,0 +1,46 @@
+# =============================================================================
+#
+# - Copyright (C) 2017     George Li <yongxinl@outlook.com>
+#
+# - This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# =============================================================================
+version: '2'
+services:
+  elasticsearch:
+    image: yongxinl/alpine-elasticsearch:2.x
+    volumes:
+      - /yongxin/private/var/data:/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - ES_JAVA_OPTS="-Xms256m -Xmx256m"
+
+  plex:
+    image: yongxinl/alpine-plex:latest
+    volumes:
+      - /yongxin/private/var/data:/data
+      - /yongxin/dataLibrary:/media
+    ports:
+      - "32400:32400"
+      - "3005:3005/tcp"
+      - "8324:8324/tcp"
+      - "32469:32469/tcp"
+      - "1900:1900/udp"
+      - "32412-32414:32412-32414/udp"
+    environment:
+      - PLEX_LOGIN="yongxinL@outlook.com"
+      - PLEX_PASSWORD="Fnd-C43-HFx-6zq"
+    hostname: captainL
+
+  kibana:
+    image: yongxinl/alpine-kibana:4.x
+    volumes:
+      - /yongxin/private/var/data:/data
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
