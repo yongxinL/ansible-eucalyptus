@@ -23,13 +23,14 @@ service_name="elasticsearch"
 service_version="2.4.5"
 package_download_url="https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/tar/elasticsearch/${service_version}/elasticsearch-${service_version}.tar.gz"
 
-## Main ----------------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
-infobox "*** Creating reqired user and group ..."
-[ $(grep -c "^${service_group}:" /etc/group) -eq 0 ] && addgroup -g "8031" "${service_group}" && success || failure
-[ $(grep -c "^${service_owner}:" /etc/passwd) -eq 0 ] && adduser -SH -u "8031" -G "${service_group}" -s /usr/sbin/nologin "${service_owner}" && success || failure
+## Main ----------------------------------------------------------------------
+print_log "*** Creating reqired user and group ..."
+[ $(grep -c "^${service_group}:" /etc/group) -eq 0 ] && addgroup -g "8031" "${service_group}" && success || passed
+[ $(grep -c "^${service_owner}:" /etc/passwd) -eq 0 ] && adduser -SH -u "8031" -G "${service_group}" -s /usr/sbin/nologin "${service_owner}" && success || passed
 
 exec_command "*** Installing prerequsites packages and common tools ..." \
 	${package_cmd_install} gnupg openssl tar;
@@ -46,19 +47,19 @@ exec_command "*** Configuring ${service_name} ..." \
 	chmod +x "/etc/service/${service_name}/run"; \
 	mkdir -p /etc/elastic/${service_name}/scripts;
 
-infobox "*** Copying configure files ..."; \
-find ${script_path}/service/${service_name}/. -maxdepth 1 -type f ! -name *.runit -exec cp "{}" "/etc/elastic/${service_name}" ";" && success || failure
+print_log "*** Copying configure files ...";
+find ${script_path}/service/${service_name}/. -maxdepth 1 -type f ! -name *.runit -exec cp "{}" "/etc/elastic/${service_name}" ";" && success || passed
 
 # ICU analysis - integrated the Lucene ICU module, adding extended Unicode support.
 exec_command "*** Installing ${service_name} ICU analysis plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch analysis-icu;
+	/usr/share/${service_name}/bin/plugin install --batch analysis-icu &> /dev/null;
 # Smart Chinese Analysis -an analyzer for Chinese or mixed Chinese-English text
 exec_command "*** Installing ${service_name} Smart Chinese Analysis plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch analysis-smartcn;
+	/usr/share/${service_name}/bin/plugin install --batch analysis-smartcn &> /dev/null;
 # Mapper attachments - index file attachments in common formats using apache text extraction library Tika
 exec_command "*** Installing ${service_name} Mapper attachments plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch mapper-attachments;
+	/usr/share/${service_name}/bin/plugin install --batch mapper-attachments &> /dev/null;
 # Marval - collect data from each node in your cluster
 exec_command "*** Installing ${service_name} Marval plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch license; \
-	/usr/share/${service_name}/bin/plugin install --batch marvel-agent;
+	/usr/share/${service_name}/bin/plugin install --batch license &> /dev/null; \
+	/usr/share/${service_name}/bin/plugin install --batch marvel-agent &> /dev/null;
