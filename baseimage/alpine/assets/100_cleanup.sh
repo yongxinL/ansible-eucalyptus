@@ -16,11 +16,12 @@ set -e
 # - commonly used variables
 script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
 
-## Main ----------------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
-    source "${script_path}/functions.dash";
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.dash";
 
-infobox "*** Cleaning up Linux Distribution ..." && success
-rm -rf /tmp/*
-rm -rf /var/cache/apk/*
-rm -rf /${script_path}
+## Main ----------------------------------------------------------------------
+exec_command "*** Cleaning up Linux Distribution ..." \
+	rm -rf /tmp/*; \
+	rm -rf /var/cache/apk/*; \
+	rm -rf /${script_path};

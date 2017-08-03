@@ -19,7 +19,7 @@ log_level="verbose"
 log_file="/var/log/syslog"
 
 ## Functions -----------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
 ## Main ----------------------------------------------------------------------

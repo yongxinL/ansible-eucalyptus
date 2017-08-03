@@ -19,13 +19,14 @@ log_level="verbose"
 log_file="/var/log/syslog"
 
 ## Functions -----------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
+## Main ----------------------------------------------------------------------
 # - service variables
 service_data_path="/etc/periodic/15min /etc/periodic/daily /etc/periodic/hourly /etc/periodic/monthly /etc/periodic/weekly /var/spool/cron"
 
-infobox "*** Creating required directories ..."
+print_info "*** Creating required directories ..."
 for path in ${service_data_path};
 do
 	[ ! -d /etc/periodic/${path} ] && mkdir -p /etc/periodic/${path};

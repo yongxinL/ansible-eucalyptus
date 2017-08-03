@@ -15,13 +15,13 @@ set -e
 ## Vars ----------------------------------------------------------------------
 # - commonly used variables
 script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
+service_name=cron
 
-## Main ----------------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
-service_name=$(split_str_first $(split_str_last ${script_name} "_") ".")
-
+## Main ----------------------------------------------------------------------
 exec_command "*** Installing packages and common tools ..." \
 	${package_cmd_install} dcron;
 

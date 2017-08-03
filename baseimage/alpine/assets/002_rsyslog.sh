@@ -15,13 +15,13 @@ set -e
 ## Vars ----------------------------------------------------------------------
 # - commonly used variables
 script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
+service_name=rsyslog
 
-## Main ----------------------------------------------------------------------
-infobox "*** Checking for required libraries." 2> /dev/null ||
+## Functions -----------------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
     source "/etc/functions.dash";
 
-service_name=$(split_str_first $(split_str_last ${script_name} "_") ".")
-
+## Main ----------------------------------------------------------------------
 exec_command "*** Installing packages and common tools ..." \
 	${package_cmd_install} rsyslog logrotate;
 
@@ -36,6 +36,6 @@ exec_command "*** Creating required directories and configure files ..." \
 	mkdir -p /etc/logrotate.d; \
 	cp "${script_path}/service/${service_name}/logrotate.conf" "/etc/logrotate.conf";
 
-infobox "*** Copying configure files ..." && success
+print_info "*** Copying configure files ..."
 find ${script_path}/service/${service_name}/*.conf -maxdepth 1 -type f ! \( -name "rsyslog.conf" -o -name "logrotate.conf" \) -exec cp "{}" /etc/rsyslog.d ";"
 find ${script_path}/service/${service_name}/*.logrotate -maxdepth 1 -type f ! \( -name "rsyslog.conf" -o -name "logrotate.conf" \) -exec cp "{}" "/etc/logrotate.d" ";"
