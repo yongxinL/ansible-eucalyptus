@@ -9,26 +9,20 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
 log_level="verbose"
 log_file="/var/log/syslog"
-
-# - service variables
 service_owner="elk"
 service_group="elk"
 service_name="elasticsearch"
 service_data_path="config config/scripts config/ingest-geoip data logs plugins work"
-
 ES_JAVA_OPTS=${ES_JAVA_OPTS:-"-Xms128m -Xmx256m"}
 
 ## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "/etc/functions.dash";
 
 ## Main ----------------------------------------------------------------------
 for path in ${service_data_path};
