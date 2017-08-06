@@ -26,7 +26,7 @@ service_data_path="config data"
 
 ## Functions -----------------------------------------------------------------
 print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "/etc/functions.dash";
+    source "/etc/functions.bash";
 
 ## Main ----------------------------------------------------------------------
 for path in ${service_data_path};

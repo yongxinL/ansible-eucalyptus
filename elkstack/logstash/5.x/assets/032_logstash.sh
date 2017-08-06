@@ -9,14 +9,11 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
-
-# - service variables
 service_owner="elk"
 service_group="elk"
 service_name="logstash"
@@ -24,8 +21,6 @@ service_version="5.5.1"
 package_download_url="https://artifacts.elastic.co/downloads/logstash/logstash-${service_version}.tar.gz"
 
 ## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "/etc/functions.dash";
 
 ## Main ----------------------------------------------------------------------
 print_log "*** Creating reqired user and group ..."
