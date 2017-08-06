@@ -12,10 +12,12 @@
 #
 # =============================================================================
 
-## Vars ----------------------------------------------------------------------
+## Shell Opts ----------------------------------------------------------------
+set -e
 
+## Vars ----------------------------------------------------------------------
 # declare version
-lib_version="1.0.1"
+lib_version="1.0.5"
 
 # reload script with bash
 if [ ! -n "${BASH_VERSION}" ]; then
@@ -52,6 +54,7 @@ function init_variables() {
 
 	# declare script name
 	script_name="${script_name:-$(basename $0)}"
+	script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
 
 	# start time in order to calculate total running time.
 	__libs_start_time="${start_time:-$(date +%s)}"
@@ -214,8 +217,8 @@ function print_fail() {
 
 # function to print log to the screen
 function print_log() {
-	if [ ${#1} -gt 80 ]; then
-		printf "${__lib_color_info}%s %s-%s:%s${__lib_color_normal}"  "$(date -u +"${__lib_format_date_short}")" "$(get_filename ${script_name})"  "[INFO]"  "${1:0:80}..."
+	if [ ${#1} -gt 60 ]; then
+		printf "${__lib_color_info}%s %s-%s:%s${__lib_color_normal}"  "$(date -u +"${__lib_format_date_short}")" "$(get_filename ${script_name})"  "[INFO]"  "${1:0:60}..."
 	else
 		printf "${__lib_color_info}%s %s-%s:%s${__lib_color_normal}"  "$(date -u +"${__lib_format_date_short}")" "$(get_filename ${script_name})"  "[INFO]"  "${1}"
 	fi
@@ -227,6 +230,9 @@ function write_log() {
 		mkdir -p ${log_file%/*}
 		touch ${log_file}
 	fi
+
+	# open a new line
+	echo >> ${log_file}
 
 	if [ "${log_level}" == "verbose" ]; then
 		# output to both of console and Log file
