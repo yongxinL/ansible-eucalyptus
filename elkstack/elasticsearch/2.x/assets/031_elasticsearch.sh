@@ -9,14 +9,11 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
-
-# - service variables
 service_owner="elk"
 service_group="elk"
 service_name="elasticsearch"
@@ -24,8 +21,6 @@ service_version="2.4.5"
 package_download_url="https://download.elastic.co/elasticsearch/release/org/elasticsearch/distribution/tar/elasticsearch/${service_version}/elasticsearch-${service_version}.tar.gz"
 
 ## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "/etc/functions.dash";
 
 ## Main ----------------------------------------------------------------------
 print_log "*** Creating reqired user and group ..."
@@ -52,14 +47,14 @@ find ${script_path}/service/${service_name}/. -maxdepth 1 -type f ! -name *.runi
 
 # ICU analysis - integrated the Lucene ICU module, adding extended Unicode support.
 exec_command "*** Installing ${service_name} ICU analysis plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch analysis-icu &> /dev/null;
+	/usr/share/${service_name}/bin/plugin install --batch analysis-icu >> ${log_file};
 # Smart Chinese Analysis -an analyzer for Chinese or mixed Chinese-English text
 exec_command "*** Installing ${service_name} Smart Chinese Analysis plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch analysis-smartcn &> /dev/null;
+	/usr/share/${service_name}/bin/plugin install --batch analysis-smartcn >> ${log_file};
 # Mapper attachments - index file attachments in common formats using apache text extraction library Tika
 exec_command "*** Installing ${service_name} Mapper attachments plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch mapper-attachments &> /dev/null;
+	/usr/share/${service_name}/bin/plugin install --batch mapper-attachments >> ${log_file};
 # Marval - collect data from each node in your cluster
 exec_command "*** Installing ${service_name} Marval plugins ..." \
-	/usr/share/${service_name}/bin/plugin install --batch license &> /dev/null; \
-	/usr/share/${service_name}/bin/plugin install --batch marvel-agent &> /dev/null;
+	/usr/share/${service_name}/bin/plugin install --batch license >> ${log_file}; \
+	/usr/share/${service_name}/bin/plugin install --batch marvel-agent >> ${log_file};
