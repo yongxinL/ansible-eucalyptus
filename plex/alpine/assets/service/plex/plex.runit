@@ -9,25 +9,19 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
 log_level="verbose"
 log_file="/var/log/syslog"
-
-# - service variables
 service_owner="plex"
 service_name="plex"
 service_data_path="/data/plex"
 service_config_file="${service_data_path}/Plex Media Server/Preferences.xml"
 
 ## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-	source "/etc/functions.dash";
-
 # write the system variables to files before drop privileges
 function update_envdir() {
 
