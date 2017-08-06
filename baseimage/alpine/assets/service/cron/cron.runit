@@ -9,29 +9,29 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
 log_level="verbose"
 log_file="/var/log/syslog"
-
-## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "/etc/functions.dash";
-
-## Main ----------------------------------------------------------------------
-# - service variables
+service_name="cron"
 service_data_path="/etc/periodic/15min /etc/periodic/daily /etc/periodic/hourly /etc/periodic/monthly /etc/periodic/weekly /var/spool/cron"
 
-print_info "*** Creating required directories ..."
+## Functions -----------------------------------------------------------------
+
+## Main ----------------------------------------------------------------------
 for path in ${service_data_path};
 do
-	[ ! -d /etc/periodic/${path} ] && mkdir -p /etc/periodic/${path};
+    if [ ! -d ${path} ]; then
+        exec_command "*** Creating required directory ${path} ..." \
+            mkdir -p ${path};
+    fi
+    chown -R root:root ${path};
 done
-chown -R root:root /etc/periodic
+
+exec_command "*** *** Relink ${service_name} configuration directory"
 [ -d /var/spool/cron/crontabs ] && rm -rf /var/spool/cron/crontabs
 ln -s /etc/crontabs /var/spool/cron/
 

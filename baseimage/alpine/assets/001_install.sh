@@ -10,16 +10,14 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "${script_path}/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
 
 ## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "${script_path}/functions.dash";
 
 ## Main ----------------------------------------------------------------------
 # upgrade Linux repository and distribution
@@ -44,7 +42,7 @@ exec_command "*** Installing runit ..." \
 	mkdir -p "/etc/envdir";
 
 exec_command "*** Installing bash-lib ..." \
-	cp ${script_path}/functions.dash /etc/functions.dash; \
+	cp ${script_path}/functions.bash /etc/functions.bash; \
 
 exec_command "*** Uninstalling unused packages and common tools ..." \
 	${package_cmd_delete} git gcc make musl-dev unzip zip;
