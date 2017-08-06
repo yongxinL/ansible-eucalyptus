@@ -9,14 +9,11 @@
 #
 # =============================================================================
 
-## Shell Opts ----------------------------------------------------------------
-set -e
+## Function Library ----------------------------------------------------------
+print_info "*** Checking for required libraries." 2> /dev/null ||
+    source "/etc/functions.bash";
 
 ## Vars ----------------------------------------------------------------------
-# - commonly used variables
-script_path="$( if [ "$( echo "${0%/*}" )" != "$( echo "${0}" )" ] ; then cd "$( echo "${0%/*}" )"; fi; pwd )"
-
-# - service variables
 service_owner="elk"
 service_group="elk"
 service_name="kibana"
@@ -24,8 +21,6 @@ service_version="4.6.4"
 package_download_url="https://download.elastic.co/kibana/kibana/kibana-${service_version}-linux-x86_64.tar.gz"
 
 ## Functions -----------------------------------------------------------------
-print_info "*** Checking for required libraries." 2> /dev/null ||
-    source "/etc/functions.dash";
 
 ## Main ----------------------------------------------------------------------
 print_log "*** Creating reqired user and group ..."
@@ -57,4 +52,4 @@ find ${script_path}/service/${service_name}/. -maxdepth 1 -type f ! -name *.runi
 
 # Marval - collect data from each node in your cluster
 exec_command "*** Installing ${service_name} Marval plugins ..." \
-	/usr/share/${service_name}/bin/${service_name} plugin --install elasticsearch/marvel/2.4.5 &> /dev/null;
+	/usr/share/${service_name}/bin/${service_name} plugin --install elasticsearch/marvel/2.4.5 >> ${log_file};
