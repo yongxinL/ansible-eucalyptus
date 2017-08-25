@@ -23,7 +23,6 @@ exec_command "*** Installing required packages and common tools ..." \
     ${package_cmd_install} binutils file openssl xz;
 
 # extracting packages ...
-tar -xvf ${script_path}/glibc.tar.gz -C ${script_path}
 for pkg in ${package_lists};
 do
     exec_command "*** Extracting ${pkg} packages ..."  \
