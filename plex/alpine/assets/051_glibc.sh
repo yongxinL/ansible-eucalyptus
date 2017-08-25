@@ -20,7 +20,16 @@ package_lists="libc6 libgcc1 libstdc++6"
 
 ## Main ----------------------------------------------------------------------
 exec_command "*** Installing required packages and common tools ..." \
-    ${package_cmd_install} binutils file openssl xz;
+    ${package_cmd_install} binutils file openssl xz unzip zip;
+
+# download from debian repository
+#curl -L "http://ftp.debian.org/debian/pool/main/g/glibc/libc6_2.24-14_amd64.deb" -o libc6_amd64.deb;
+#curl -L "http://ftp.debian.org/debian/pool/main/g/gcc-4.9/libgcc1_4.9.2-10_amd64.deb" -o libgcc1.deb;
+#curl -L "http://ftp.debian.org/debian/pool/main/g/gcc-4.9/libstdc++6_4.9.2-10_amd64.deb" -o libstdc++6.deb;
+
+# or extracting local package file
+exec_command "*** Extracting local package file ..." \
+    unzip ${script_path}/glibc.zip -d ${script_path};
 
 # extracting packages ...
 for pkg in ${package_lists};
